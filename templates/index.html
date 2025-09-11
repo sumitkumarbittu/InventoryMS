@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-warehouse"></i> Inventory Management System</h1>
+                <nav class="nav">
+                    <a href="#dashboard" class="nav-link active" data-section="dashboard">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="#vendors" class="nav-link" data-section="vendors">
+                        <i class="fas fa-truck"></i> Vendors
+                    </a>
+                    <a href="#warehouses" class="nav-link" data-section="warehouses">
+                        <i class="fas fa-building"></i> Warehouses
+                    </a>
+                    <a href="#products" class="nav-link" data-section="products">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a href="#shipments" class="nav-link" data-section="shipments">
+                        <i class="fas fa-shipping-fast"></i> Shipments
+                    </a>
+                    <a href="#orders" class="nav-link" data-section="orders">
+                        <i class="fas fa-file-invoice"></i> Orders
+                    </a>
+                    <a href="#analytics" class="nav-link" data-section="analytics">
+                        <i class="fas fa-chart-bar"></i> Analytics
+                    </a>
+                    <a href="#forecasting" class="nav-link" data-section="forecasting">
+                        <i class="fas fa-brain"></i> Forecasting
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <h2>Dashboard</h2>
+                    <p>Overview of your inventory management system</p>
+                </div>
+                
+                <!-- Summary Cards -->
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Total Inventory Value</h3>
+                            <p class="card-value" id="totalValue">$0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Total Products</h3>
+                            <p class="card-value" id="totalProducts">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Low Stock Alerts</h3>
+                            <p class="card-value" id="lowStockCount">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-warehouse"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Warehouses</h3>
+                            <p class="card-value" id="warehouseCount">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Low Stock Alerts</h3>
+                        <div id="lowStockTable" class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Warehouse</th>
+                                        <th>Current Stock</th>
+                                        <th>Reorder Point</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lowStockTableBody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>Top Products</h3>
+                        <div id="topProductsTable" class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Revenue</th>
+                                        <th>Quantity Sold</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topProductsTableBody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vendors Section -->
+            <section id="vendors" class="content-section">
+                <div class="section-header">
+                    <h2>Vendors</h2>
+                    <button class="btn btn-primary" onclick="showVendorModal()">
+                        <i class="fas fa-plus"></i> Add Vendor
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Contact Person</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendorsTableBody">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Warehouses Section -->
+            <section id="warehouses" class="content-section">
+                <div class="section-header">
+                    <h2>Warehouses</h2>
+                    <button class="btn btn-primary" onclick="showWarehouseModal()">
+                        <i class="fas fa-plus"></i> Add Warehouse
+                    </button>
+                </div>
+                
+                <div class="cards-grid">
+                    <div id="warehousesContainer">
+                        <!-- Warehouse cards will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products Section -->
+            <section id="products" class="content-section">
+                <div class="section-header">
+                    <h2>Products</h2>
+                    <button class="btn btn-primary" onclick="showProductModal()">
+                        <i class="fas fa-plus"></i> Add Product
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>SKU</th>
+                                <th>Unit Price</th>
+                                <th>Stock Status</th>
+                                <th>Reorder Point</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Shipments Section -->
+            <section id="shipments" class="content-section">
+                <div class="section-header">
+                    <h2>Shipments</h2>
+                    <button class="btn btn-primary" onclick="showShipmentModal()">
+                        <i class="fas fa-plus"></i> Add Shipment
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Warehouse</th>
+                                <th>Vendor/Customer</th>
+                                <th>Carrier</th>
+                                <th>Shipment Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipmentsTableBody">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section id="orders" class="content-section">
+                <div class="section-header">
+                    <h2>Orders</h2>
+                    <button class="btn btn-primary" onclick="showOrderModal()">
+                        <i class="fas fa-plus"></i> Add Order
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Vendor</th>
+                                <th>Order Date</th>
+                                <th>Total Amount</th>
+                                <th>Payment Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="content-section">
+                <div class="section-header">
+                    <h2>Analytics</h2>
+                    <p>Comprehensive analytics and insights</p>
+                </div>
+                
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h3>Vendor Performance</h3>
+                        <div id="vendorPerformanceTable" class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vendor</th>
+                                        <th>Rating</th>
+                                        <th>Total Orders</th>
+                                        <th>Total Sales</th>
+                                        <th>Delivery Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vendorPerformanceTableBody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-card">
+                        <h3>Inventory Turnover</h3>
+                        <div id="inventoryTurnoverTable" class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Turnover Rate</th>
+                                        <th>Days in Inventory</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTurnoverTableBody">
+                                    <!-- Data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Forecasting Section -->
+            <section id="forecasting" class="content-section">
+                <div class="section-header">
+                    <h2>Demand Forecasting</h2>
+                    <p>Predict future demand using advanced algorithms</p>
+                </div>
+                
+                <div class="forecasting-controls">
+                    <div class="form-group">
+                        <label for="forecastProduct">Product:</label>
+                        <select id="forecastProduct" class="form-control">
+                            <option value="">Select Product</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="forecastWarehouse">Warehouse:</label>
+                        <select id="forecastWarehouse" class="form-control">
+                            <option value="">Select Warehouse</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="forecastMethod">Method:</label>
+                        <select id="forecastMethod" class="form-control">
+                            <option value="ensemble">Ensemble</option>
+                            <option value="moving_average">Moving Average</option>
+                            <option value="exponential_smoothing">Exponential Smoothing</option>
+                            <option value="trend_analysis">Trend Analysis</option>
+                            <option value="seasonal">Seasonal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="forecastPeriods">Periods:</label>
+                        <input type="number" id="forecastPeriods" class="form-control" value="12" min="1" max="24">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="generateForecast()">
+                        <i class="fas fa-brain"></i> Generate Forecast
+                    </button>
+                </div>
+                
+                <div id="forecastResults" class="forecast-results" style="display: none;">
+                    <h3>Forecast Results</h3>
+                    <div id="forecastChart" class="chart-container">
+                        <!-- Chart will be rendered here -->
+                    </div>
+                    <div id="forecastTable" class="table-container">
+                        <!-- Forecast data table will be loaded here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals will be added here -->
+    <div id="modalOverlay" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Modal Title</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

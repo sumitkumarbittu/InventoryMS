@@ -1,0 +1,13 @@
+{
+  "name": "inventory-management-system",
+  "version": "1.0.0",
+  "description": "Inventory Management System with Python Flask backend and HTML/CSS frontend",
+  "main": "app.py",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python app.py"
+  },
+  "keywords": ["inventory", "management", "flask", "python", "html", "css"],
+  "author": "Inventory Management System",
+  "license": "MIT"
+}
