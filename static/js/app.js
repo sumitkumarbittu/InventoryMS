@@ -778,8 +778,8 @@ function showWarehouseModal() {
             name: document.getElementById('warehouseName').value,
             location: document.getElementById('warehouseLocation').value,
             capacity: parseInt(document.getElementById('warehouseCapacity').value),
-            manager: document.getElementById('warehouseManager').value,
-            phone: document.getElementById('warehousePhone').value,
+            manager_name: document.getElementById('warehouseManager').value,
+            manager_contact: document.getElementById('warehousePhone').value,
             address: document.getElementById('warehouseAddress').value
         };
         
