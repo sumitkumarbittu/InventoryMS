@@ -40,48 +40,54 @@ class Database:
         try:
             # Check if connection exists and is alive
             if not self.connection or not self.connection.open:
-                self.connect()
+                if not self.connect():
+                    raise Exception("Failed to establish database connection")
             
             # Test connection before executing query
             try:
                 self.connection.ping(reconnect=True)
             except:
-                self.connect()
+                if not self.connect():
+                    raise Exception("Failed to reconnect to database")
             
-            with self.connection.cursor() as cursor:
-                cursor.execute(query, params)
+            # Ensure connection is not None before creating db_handler
+            if not self.connection:
+                raise Exception("Database connection is None")
+                
+            with self.connection.cursor() as db_handler:
+                db_handler.execute(query, params)
                 
                 if fetch:
                     if 'SELECT' in query.upper():
-                        return cursor.fetchall()
+                        return db_handler.fetchall()
                     else:
-                        return cursor.fetchone()
+                        return db_handler.fetchone()
                 else:
                     # For INSERT operations, return the last inserted ID
                     if 'INSERT' in query.upper():
-                        return cursor.lastrowid
+                        return db_handler.lastrowid
                     else:
-                        return cursor.rowcount
+                        return db_handler.rowcount
                     
         except Exception as e:
             logging.error(f"Query execution failed: {str(e)}")
             # Try to reconnect and retry once
             try:
                 self.connect()
-                with self.connection.cursor() as cursor:
-                    cursor.execute(query, params)
+                with self.connection.cursor() as db_handler:
+                    db_handler.execute(query, params)
                     
                     if fetch:
                         if 'SELECT' in query.upper():
-                            return cursor.fetchall()
+                            return db_handler.fetchall()
                         else:
-                            return cursor.fetchone()
+                            return db_handler.fetchone()
                     else:
                         # For INSERT operations, return the last inserted ID
                         if 'INSERT' in query.upper():
-                            return cursor.lastrowid
+                            return db_handler.lastrowid
                         else:
-                            return cursor.rowcount
+                            return db_handler.rowcount
             except Exception as retry_e:
                 logging.error(f"Query retry failed: {str(retry_e)}")
                 raise retry_e

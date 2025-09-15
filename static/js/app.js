@@ -69,7 +69,12 @@ function loadSectionData(section) {
             loadVendors();
             break;
         case 'warehouses':
-            loadWarehouses();
+            // If warehouses data is already loaded, just update the display
+            if (currentData.warehouses && currentData.warehouses.length > 0) {
+                updateWarehousesCards();
+            } else {
+                loadWarehouses();
+            }
             break;
         case 'products':
             loadProducts();
@@ -242,10 +247,6 @@ async function loadAllData() {
         if (vendorsRes.success) currentData.vendors = vendorsRes.data;
         if (warehousesRes.success) {
             currentData.warehouses = warehousesRes.data;
-            // Update warehouses display if we're on the warehouses section
-            if (document.getElementById('warehouses')?.classList.contains('active')) {
-                updateWarehousesCards();
-            }
         }
         if (productsRes.success) currentData.products = productsRes.data;
         if (shipmentsRes.success) currentData.shipments = shipmentsRes.data;
@@ -342,12 +343,22 @@ function updateWarehousesCards() {
     }
     
     container.innerHTML = currentData.warehouses.map(warehouse => `
-        <div class="card">
+        <div class="card warehouse-card">
             <div class="card-icon">
                 <i class="fas fa-warehouse"></i>
             </div>
             <div class="card-content">
-                <h3>${warehouse.name}</h3>
+                <div class="card-header">
+                    <h3>${warehouse.name}</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="editWarehouse(${warehouse.warehouse_id})" title="Edit Warehouse">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteWarehouse(${warehouse.warehouse_id})" title="Delete Warehouse">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
                 <p style="color: #7f8c8d; margin: 5px 0;">${warehouse.location}</p>
                 <p style="color: #2c3e50; font-size: 1.2rem; font-weight: 600; margin: 10px 0;">
                     ${warehouse.utilization_percentage?.toFixed(1) || '0'}% Utilization
@@ -364,6 +375,12 @@ function updateWarehousesCards() {
                 <p style="color: #7f8c8d; font-size: 0.9rem;">
                     ${warehouse.current_utilization || 0} / ${warehouse.capacity || 0} capacity
                 </p>
+                <div class="warehouse-details">
+                    <small style="color: #7f8c8d;">
+                        ${warehouse.manager_name ? `Manager: ${warehouse.manager_name}` : ''}
+                        ${warehouse.manager_contact ? ` | ${warehouse.manager_contact}` : ''}
+                    </small>
+                </div>
             </div>
         </div>
     `).join('');
@@ -1044,6 +1061,97 @@ function showOrderModal() {
             showNotification(response.error || 'Failed to create order', 'error');
         }
     });
+}
+
+// Warehouse CRUD operations
+function editWarehouse(warehouseId) {
+    const warehouse = currentData.warehouses.find(w => w.warehouse_id === warehouseId);
+    if (!warehouse) {
+        showNotification('Warehouse not found', 'error');
+        return;
+    }
+    
+    const content = `
+        <form id="editWarehouseForm">
+            <div class="form-group">
+                <label>Warehouse Name *</label>
+                <input type="text" class="form-control" id="editWarehouseName" value="${warehouse.name}" required>
+            </div>
+            <div class="form-group">
+                <label>Location *</label>
+                <input type="text" class="form-control" id="editWarehouseLocation" value="${warehouse.location}" required>
+            </div>
+            <div class="form-group">
+                <label>Capacity *</label>
+                <input type="number" class="form-control" id="editWarehouseCapacity" value="${warehouse.capacity}" required min="1">
+            </div>
+            <div class="form-group">
+                <label>Manager</label>
+                <input type="text" class="form-control" id="editWarehouseManager" value="${warehouse.manager_name || ''}">
+            </div>
+            <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" class="form-control" id="editWarehousePhone" value="${warehouse.manager_contact || ''}">
+            </div>
+            <div class="form-group">
+                <label>Address</label>
+                <textarea class="form-control" id="editWarehouseAddress" rows="3">${warehouse.address || ''}</textarea>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Warehouse</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Edit Warehouse', content);
+    
+    // Add form submission handler
+    document.getElementById('editWarehouseForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const warehouseData = {
+            name: document.getElementById('editWarehouseName').value,
+            location: document.getElementById('editWarehouseLocation').value,
+            capacity: parseInt(document.getElementById('editWarehouseCapacity').value),
+            manager_name: document.getElementById('editWarehouseManager').value,
+            manager_contact: document.getElementById('editWarehousePhone').value,
+            address: document.getElementById('editWarehouseAddress').value
+        };
+        
+        const response = await apiCall(`/warehouses/${warehouseId}`, 'PUT', warehouseData);
+        if (response.success) {
+            showNotification('Warehouse updated successfully', 'success');
+            closeModal();
+            loadWarehouses();
+        } else {
+            showNotification(response.error || 'Failed to update warehouse', 'error');
+        }
+    });
+}
+
+function deleteWarehouse(warehouseId) {
+    const warehouse = currentData.warehouses.find(w => w.warehouse_id === warehouseId);
+    if (!warehouse) {
+        showNotification('Warehouse not found', 'error');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete warehouse "${warehouse.name}"? This action cannot be undone.`)) {
+        apiCall(`/warehouses/${warehouseId}`, 'DELETE')
+            .then(response => {
+                if (response.success) {
+                    showNotification('Warehouse deleted successfully', 'success');
+                    loadWarehouses();
+                } else {
+                    showNotification(response.error || 'Failed to delete warehouse', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error deleting warehouse', 'error');
+                console.error('Delete warehouse error:', error);
+            });
+    }
 }
 
 // Placeholder functions for edit/delete operations
