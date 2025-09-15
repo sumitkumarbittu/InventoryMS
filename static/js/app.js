@@ -20,6 +20,14 @@ function initializeApp() {
     setupNavigation();
     loadDashboardData();
     loadAllData();
+    
+    // Set dashboard as default active section
+    const dashboardSection = document.getElementById('dashboard');
+    const dashboardLink = document.querySelector('[data-section="dashboard"]');
+    if (dashboardSection && dashboardLink) {
+        dashboardSection.classList.add('active');
+        dashboardLink.classList.add('active');
+    }
 }
 
 // Navigation
@@ -232,7 +240,13 @@ async function loadAllData() {
         ]);
         
         if (vendorsRes.success) currentData.vendors = vendorsRes.data;
-        if (warehousesRes.success) currentData.warehouses = warehousesRes.data;
+        if (warehousesRes.success) {
+            currentData.warehouses = warehousesRes.data;
+            // Update warehouses display if we're on the warehouses section
+            if (document.getElementById('warehouses')?.classList.contains('active')) {
+                updateWarehousesCards();
+            }
+        }
         if (productsRes.success) currentData.products = productsRes.data;
         if (shipmentsRes.success) currentData.shipments = shipmentsRes.data;
         if (ordersRes.success) currentData.orders = ordersRes.data;
@@ -281,9 +295,11 @@ function updateVendorsTable() {
 }
 
 function renderStars(rating) {
+    // Convert string rating to number
+    const numRating = parseFloat(rating) || 0;
     const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+    const fullStars = Math.floor(numRating);
+    const hasHalfStar = numRating % 1 !== 0;
     
     for (let i = 0; i < fullStars; i++) {
         stars.push('<i class="fas fa-star" style="color: #ffc107;"></i>');
@@ -293,12 +309,12 @@ function renderStars(rating) {
         stars.push('<i class="fas fa-star-half-alt" style="color: #ffc107;"></i>');
     }
     
-    const emptyStars = 5 - Math.ceil(rating);
+    const emptyStars = 5 - Math.ceil(numRating);
     for (let i = 0; i < emptyStars; i++) {
         stars.push('<i class="far fa-star" style="color: #ddd;"></i>');
     }
     
-    return stars.join('') + ` <span style="margin-left: 5px;">${rating.toFixed(1)}</span>`;
+    return stars.join('') + ` <span style="margin-left: 5px;">${numRating.toFixed(1)}</span>`;
 }
 
 // Warehouses Functions
@@ -319,6 +335,11 @@ async function loadWarehouses() {
 
 function updateWarehousesCards() {
     const container = document.getElementById('warehousesContainer');
+    
+    if (!container) {
+        console.error('Warehouses container not found');
+        return;
+    }
     
     container.innerHTML = currentData.warehouses.map(warehouse => `
         <div class="card">
@@ -903,10 +924,6 @@ function showShipmentModal() {
                 <label>Shipment Date</label>
                 <input type="date" class="form-control" id="shipmentDate">
             </div>
-            <div class="form-group">
-                <label>Expected Delivery Date</label>
-                <input type="date" class="form-control" id="shipmentExpectedDate">
-            </div>
             <div style="text-align: right; margin-top: 20px;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Shipment</button>
@@ -927,8 +944,7 @@ function showShipmentModal() {
                 tracking_number: document.getElementById('shipmentTracking').value,
                 carrier: document.getElementById('shipmentCarrier').value,
                 status: document.getElementById('shipmentStatus').value,
-                shipment_date: document.getElementById('shipmentDate').value,
-                expected_delivery_date: document.getElementById('shipmentExpectedDate').value
+                shipment_date: document.getElementById('shipmentDate').value
             },
             items: [] // For now, empty items array
         };

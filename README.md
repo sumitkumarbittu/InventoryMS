@@ -422,6 +422,13 @@ pip install -r requirements.txt
 - Verify Flask app is running: `curl http://localhost:5001`
 - Check static files are accessible: `curl http://localhost:5001/static/css/style.css`
 
+#### 7. Warehouse/Vendor Creation Issues
+**Problem**: Forms submit but no data appears or creation fails
+- Check browser console for JavaScript errors
+- Verify API endpoints return proper IDs: `curl -X POST http://localhost:5001/api/v1/warehouses -H "Content-Type: application/json" -d '{"name":"Test","location":"Test","capacity":100}'`
+- Ensure database execute_query returns lastrowid for INSERT operations
+- Check that frontend renderStars function handles string ratings properly
+
 ### Health Checks
 ```bash
 # Check application health
@@ -450,7 +457,17 @@ For support and questions:
 
 ## 🔄 Updates
 
-### Version 2.1.0 (Current)
+### Version 2.2.0 (Current)
+- **Rebuilt Warehouses Frontend** - Complete warehouse management functionality restored
+- **Fixed Vendor and Warehouse Creation** - Backend now returns proper IDs for new records
+- **Enhanced Real-time Updates** - Improved data synchronization across all sections
+- **Shipment Form Optimization** - Removed unnecessary expected_delivery_date field
+- **Star Rating System** - Fixed vendor rating display with proper string-to-number conversion
+- **Database Query Improvements** - Fixed execute_query to return lastrowid for INSERT operations
+- **Frontend Error Handling** - Added robust error handling for missing DOM elements
+- **Navigation Improvements** - Enhanced section switching and data loading
+
+### Version 2.1.0
 - **Fixed Database Connection Issues** - Improved stability and automatic reconnection
 - **Enhanced Error Handling** - Better error messages and logging
 - **Updated Database Schema** - Added missing columns for full functionality

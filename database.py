@@ -57,7 +57,11 @@ class Database:
                     else:
                         return cursor.fetchone()
                 else:
-                    return cursor.rowcount
+                    # For INSERT operations, return the last inserted ID
+                    if 'INSERT' in query.upper():
+                        return cursor.lastrowid
+                    else:
+                        return cursor.rowcount
                     
         except Exception as e:
             logging.error(f"Query execution failed: {str(e)}")
@@ -73,7 +77,11 @@ class Database:
                         else:
                             return cursor.fetchone()
                     else:
-                        return cursor.rowcount
+                        # For INSERT operations, return the last inserted ID
+                        if 'INSERT' in query.upper():
+                            return cursor.lastrowid
+                        else:
+                            return cursor.rowcount
             except Exception as retry_e:
                 logging.error(f"Query retry failed: {str(retry_e)}")
                 raise retry_e
