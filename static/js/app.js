@@ -251,7 +251,8 @@ async function loadAllData() {
         if (productsRes.success) currentData.products = productsRes.data;
         if (shipmentsRes.success) currentData.shipments = shipmentsRes.data;
         if (ordersRes.success) currentData.orders = ordersRes.data;
-        
+        // Refresh dashboard cards (e.g., warehouseCount) after base datasets load
+        try { updateDashboardCards(); } catch (e) {}
     } catch (error) {
         console.error('Error loading data:', error);
     }
@@ -954,10 +955,23 @@ function showShipmentModal() {
     document.getElementById('shipmentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        const typeVal = document.getElementById('shipmentType').value;
+        const warehouseVal = document.getElementById('shipmentWarehouse').value;
+        if (!typeVal || !warehouseVal) {
+            showNotification('Please select shipment type and warehouse', 'warning');
+            return;
+        }
+
+        const whId = parseInt(warehouseVal);
+        if (Number.isNaN(whId)) {
+            showNotification('Invalid warehouse selected', 'error');
+            return;
+        }
+
         const shipmentData = {
             shipment: {
-                type: document.getElementById('shipmentType').value,
-                warehouse_id: parseInt(document.getElementById('shipmentWarehouse').value),
+                type: typeVal,
+                warehouse_id: whId,
                 tracking_number: document.getElementById('shipmentTracking').value,
                 carrier: document.getElementById('shipmentCarrier').value,
                 status: document.getElementById('shipmentStatus').value,

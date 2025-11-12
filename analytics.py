@@ -31,7 +31,7 @@ class AnalyticsEngine:
                 WHEN sl.current_stock <= p.reorder_point THEN 'Low'
                 ELSE 'Normal'
             END as alert_level,
-            ROUND((sl.current_stock / p.reorder_point) * 100, 2) as stock_percentage
+            ROUND((sl.current_stock::numeric / NULLIF(p.reorder_point, 0)) * 100, 2) as stock_percentage
         FROM products p
         JOIN stock_levels sl ON p.product_id = sl.product_id
         JOIN warehouses w ON sl.warehouse_id = w.warehouse_id
@@ -58,10 +58,10 @@ class AnalyticsEngine:
             ROUND(COUNT(DISTINCT CASE WHEN o.status = 'cancelled' THEN o.order_id END) * 100.0 / 
                   NULLIF(COUNT(DISTINCT o.order_id), 0), 2) as cancellation_rate,
             COUNT(DISTINCT p.product_id) as product_count,
-            COALESCE(AVG(DATEDIFF(o.actual_delivery, o.order_date)), 0) as avg_delivery_days
+            COALESCE(AVG(EXTRACT(EPOCH FROM (o.actual_delivery - o.order_date)) / 86400.0), 0) as avg_delivery_days
         FROM vendors v
         LEFT JOIN orders o ON v.vendor_id = o.vendor_id 
-            AND o.order_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND o.order_date >= CURRENT_DATE - make_interval(months => %s)
         LEFT JOIN products p ON v.vendor_id = p.vendor_id
         GROUP BY v.vendor_id, v.name, v.rating
         ORDER BY total_sales DESC
@@ -77,7 +77,7 @@ class AnalyticsEngine:
             w.location,
             w.capacity,
             w.current_utilization,
-            ROUND((w.current_utilization / w.capacity) * 100, 2) as utilization_percentage,
+            ROUND((w.current_utilization::numeric / NULLIF(w.capacity, 0)) * 100, 2) as utilization_percentage,
             COUNT(DISTINCT sl.product_id) as unique_products,
             SUM(sl.current_stock) as total_stock,
             AVG(sl.current_stock) as avg_stock_per_product,
@@ -119,11 +119,11 @@ class AnalyticsEngine:
         FROM products p
         LEFT JOIN stock_levels sl ON p.product_id = sl.product_id
         LEFT JOIN sales_history sh ON p.product_id = sh.product_id 
-            AND sh.sale_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND sh.sale_date >= CURRENT_DATE - make_interval(months => %s)
         LEFT JOIN shipment_items si ON p.product_id = si.product_id
         LEFT JOIN shipments s ON si.shipment_id = s.shipment_id 
             AND s.type = 'inbound' 
-            AND s.shipment_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND s.shipment_date >= CURRENT_DATE - make_interval(months => %s)
         GROUP BY p.product_id, p.name, p.category
         HAVING total_current_stock > 0 OR total_demand > 0
         ORDER BY total_demand DESC
@@ -134,7 +134,7 @@ class AnalyticsEngine:
         """Analyze sales trends by product and category"""
         query = """
         SELECT 
-            DATE_FORMAT(sh.sale_date, '%Y-%m') as month,
+            to_char(sh.sale_date, 'YYYY-MM') as month, 
             p.category,
             COUNT(DISTINCT sh.product_id) as products_sold,
             SUM(sh.quantity_sold) as total_quantity,
@@ -143,9 +143,9 @@ class AnalyticsEngine:
             AVG(sh.unit_price) as avg_unit_price
         FROM sales_history sh
         JOIN products p ON sh.product_id = p.product_id
-        WHERE sh.sale_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
-        GROUP BY DATE_FORMAT(sh.sale_date, '%Y-%m'), p.category
-        ORDER BY month DESC, total_revenue DESC
+        WHERE sh.sale_date >= CURRENT_DATE - make_interval(months => %s)
+        GROUP BY to_char(sh.sale_date, 'YYYY-MM'), p.category
+        ORDER BY month
         """
         return self.db.execute_query(query, (months,), fetch=True)
     
@@ -166,7 +166,7 @@ class AnalyticsEngine:
             p.reorder_point
         FROM products p
         LEFT JOIN sales_history sh ON p.product_id = sh.product_id 
-            AND sh.sale_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND sh.sale_date >= CURRENT_DATE - make_interval(months => %s)
         LEFT JOIN stock_levels sl ON p.product_id = sl.product_id
         GROUP BY p.product_id, p.name, p.category, p.sku, p.reorder_point
         HAVING total_quantity_sold > 0
@@ -186,15 +186,15 @@ class AnalyticsEngine:
             COALESCE(AVG(sl.current_stock), 0) as avg_inventory,
             CASE 
                 WHEN COALESCE(AVG(sl.current_stock), 0) = 0 THEN 0
-                ELSE ROUND(COALESCE(SUM(sh.quantity_sold), 0) / COALESCE(AVG(sl.current_stock), 0), 2)
+                ELSE ROUND(COALESCE(SUM(sh.quantity_sold), 0)::numeric / NULLIF(COALESCE(AVG(sl.current_stock), 0), 0), 2)
             END as turnover_rate,
             CASE 
                 WHEN COALESCE(AVG(sl.current_stock), 0) = 0 THEN 0
-                ELSE ROUND(365 / (COALESCE(SUM(sh.quantity_sold), 0) / COALESCE(AVG(sl.current_stock), 0)), 0)
+                ELSE ROUND(365 / NULLIF(COALESCE(SUM(sh.quantity_sold), 0)::numeric / NULLIF(COALESCE(AVG(sl.current_stock), 0), 0), 0), 0)
             END as days_in_inventory
         FROM products p
         LEFT JOIN sales_history sh ON p.product_id = sh.product_id 
-            AND sh.sale_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND sh.sale_date >= CURRENT_DATE - make_interval(months => %s)
         LEFT JOIN stock_levels sl ON p.product_id = sl.product_id
         GROUP BY p.product_id, p.name, p.category
         HAVING total_sales > 0
@@ -218,7 +218,7 @@ class AnalyticsEngine:
         FROM products p
         LEFT JOIN stock_levels sl ON p.product_id = sl.product_id
         LEFT JOIN sales_history sh ON p.product_id = sh.product_id 
-            AND sh.sale_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+            AND sh.sale_date >= CURRENT_DATE - make_interval(months => %s)
         GROUP BY p.product_id, p.name, p.category, p.unit_price
         HAVING total_stock > 0
         ORDER BY total_value DESC
@@ -239,7 +239,7 @@ class AnalyticsEngine:
             s.actual_delivery,
             CASE 
                 WHEN s.actual_delivery IS NOT NULL AND s.expected_delivery IS NOT NULL THEN
-                    DATEDIFF(s.actual_delivery, s.expected_delivery)
+                    ROUND(EXTRACT(EPOCH FROM (s.actual_delivery - s.expected_delivery)) / 86400.0)
                 ELSE NULL
             END as delivery_delay_days,
             COUNT(si.item_id) as item_count,
@@ -249,7 +249,7 @@ class AnalyticsEngine:
         LEFT JOIN warehouses w ON s.warehouse_id = w.warehouse_id
         LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
         LEFT JOIN shipment_items si ON s.shipment_id = si.shipment_id
-        WHERE s.shipment_date >= DATE_SUB(CURDATE(), INTERVAL %s MONTH)
+        WHERE s.shipment_date >= CURRENT_DATE - make_interval(months => %s)
         GROUP BY s.shipment_id, s.type, s.status, w.name, v.name, s.shipment_date, 
                  s.expected_delivery, s.actual_delivery, s.carrier
         ORDER BY s.shipment_date DESC

@@ -198,11 +198,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database Configuration
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password_here
-DB_NAME=inventory_management
-DB_PORT=3306
+DATABASE_URL=postgresql://user:password@localhost:5432/inventory_management
 
 # Flask Configuration
 SECRET_KEY=your-secret-key-here

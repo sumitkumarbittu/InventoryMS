@@ -5,11 +5,7 @@ load_dotenv()
 
 class Config:
     # Database configuration
-    DB_HOST = os.getenv('DB_HOST', 'localhost')
-    DB_USER = os.getenv('DB_USER', 'root')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-    DB_NAME = os.getenv('DB_NAME', 'inventory_management')
-    DB_PORT = int(os.getenv('DB_PORT', 5432))
+    DATABASE_URL = os.getenv('DATABASE_URL')
     
     # Flask configuration
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')

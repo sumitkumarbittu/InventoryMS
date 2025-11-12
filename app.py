@@ -25,6 +25,9 @@ analytics_engine = AnalyticsEngine()
 # Database connection
 if not db.connect():
     logger.error("Failed to connect to database")
+else:
+    # Ensure schema and seed data are applied idempotently on every start
+    db.initialize_schema('database_schema.sql')
 
 # ==================== VENDOR MANAGEMENT ====================
 
@@ -256,10 +259,22 @@ def create_shipment():
         if not shipment_data:
             return jsonify({'success': False, 'error': 'Missing shipment data'}), 400
         
-        required_fields = ['type', 'warehouse_id']
-        for field in required_fields:
-            if field not in shipment_data:
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        if 'warehouse_id' not in shipment_data and 'warehouseId' in shipment_data:
+            shipment_data['warehouse_id'] = shipment_data.get('warehouseId')
+
+        if 'type' not in shipment_data:
+            return jsonify({'success': False, 'error': 'Missing required field: type'}), 400
+
+        if 'warehouse_id' not in shipment_data:
+            return jsonify({'success': False, 'error': 'Missing required field: warehouse_id'}), 400
+
+        try:
+            shipment_data['warehouse_id'] = int(shipment_data['warehouse_id'])
+        except Exception:
+            return jsonify({'success': False, 'error': 'warehouse_id must be a valid integer'}), 400
+        
+        if not shipment_data['warehouse_id']:
+            return jsonify({'success': False, 'error': 'warehouse_id must be provided'}), 400
         
         shipment_id = Shipment.create_shipment_with_items(shipment_data, items_data)
         return jsonify({'success': True, 'data': {'shipment_id': shipment_id}}), 201

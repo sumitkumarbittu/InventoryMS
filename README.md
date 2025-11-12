@@ -128,13 +128,9 @@ pip install cryptography
 # Create environment file
 cp env.example .env
 
-# Update .env with correct database credentials
+# Update .env with DATABASE_URL
 # The .env file should contain:
-# DB_HOST=localhost
-# DB_USER=inventory_user
-# DB_PASSWORD=inventory_pass
-# DB_NAME=inventory_management
-# DB_PORT=3306
+# DATABASE_URL=postgresql://user:password@localhost:5432/inventory_management
 ```
 
 ### 4. Run the Application
@@ -266,11 +262,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database Configuration
-DB_HOST=localhost
-DB_USER=inventory_user
-DB_PASSWORD=inventory_pass
-DB_NAME=inventory_management
-DB_PORT=3306
+DATABASE_URL=postgresql://user:password@localhost:5432/inventory_management
 
 # Flask Configuration
 SECRET_KEY=your-secret-key-here

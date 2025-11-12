@@ -1,6 +1,7 @@
 from database import db
 from datetime import datetime, date
 import logging
+import re
 
 class BaseModel:
     """Base model class with common database operations"""
@@ -19,15 +20,34 @@ class BaseModel:
     def get_by_id(cls, table_name, id_field, record_id):
         """Get record by ID"""
         query = f"SELECT * FROM {table_name} WHERE {id_field} = %s"
-        return db.execute_query(query, (record_id,), fetch=True)
+        return db.execute_query(query, (record_id,), fetch='one')
     
     @classmethod
     def create(cls, table_name, data):
         """Create new record"""
         columns = ', '.join(data.keys())
         placeholders = ', '.join(['%s'] * len(data))
-        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-        return db.execute_query(query, list(data.values()))
+        id_field_map = {
+            'shipment_items': 'item_id',
+            'order_items': 'item_id',
+            'sales_history': 'sale_id',
+            'stock_levels': 'stock_id',
+            'forecasting_data': 'forecast_id',
+        }
+        if table_name in id_field_map:
+            id_field = id_field_map[table_name]
+        else:
+            base = re.sub(r's$', '', table_name)
+            id_field = f"{base}_id"
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING {id_field}"
+        result = db.execute_query(query, list(data.values()), fetch='one')
+        if isinstance(result, dict) and id_field in result:
+            return result[id_field]
+        # Fallback if driver returns sequence
+        try:
+            return result[0] if result else None
+        except Exception:
+            return None
     
     @classmethod
     def update(cls, table_name, id_field, record_id, data):
@@ -50,14 +70,22 @@ class Vendor(BaseModel):
     def get_vendors_with_stats(cls):
         """Get vendors with performance statistics"""
         query = """
-        SELECT v.*, 
-               COUNT(DISTINCT p.product_id) as product_count,
-               COUNT(DISTINCT o.order_id) as order_count,
-               COALESCE(SUM(o.total_amount), 0) as total_sales
+        SELECT 
+            v.*, 
+            COALESCE(pstats.product_count, 0) AS product_count,
+            COALESCE(ostats.order_count, 0) AS order_count,
+            COALESCE(ostats.total_sales, 0) AS total_sales
         FROM vendors v
-        LEFT JOIN products p ON v.vendor_id = p.vendor_id
-        LEFT JOIN orders o ON v.vendor_id = o.vendor_id
-        GROUP BY v.vendor_id
+        LEFT JOIN (
+            SELECT vendor_id, COUNT(DISTINCT product_id) AS product_count
+            FROM products
+            GROUP BY vendor_id
+        ) pstats ON pstats.vendor_id = v.vendor_id
+        LEFT JOIN (
+            SELECT vendor_id, COUNT(order_id) AS order_count, COALESCE(SUM(total_amount), 0) AS total_sales
+            FROM orders
+            GROUP BY vendor_id
+        ) ostats ON ostats.vendor_id = v.vendor_id
         ORDER BY v.name
         """
         return db.execute_query(query, fetch=True)
@@ -88,13 +116,17 @@ class Warehouse(BaseModel):
     def get_warehouse_utilization(cls):
         """Get warehouse utilization data"""
         query = """
-        SELECT w.*, 
-               COUNT(DISTINCT sl.product_id) as unique_products,
-               SUM(sl.current_stock) as total_stock,
-               ROUND((w.current_utilization / w.capacity) * 100, 2) as utilization_percentage
+        SELECT 
+            w.*,
+            COALESCE(sl_stats.unique_products, 0) AS unique_products,
+            COALESCE(sl_stats.total_stock, 0) AS total_stock,
+            ROUND((w.current_utilization::numeric / NULLIF(w.capacity, 0)) * 100, 2) AS utilization_percentage
         FROM warehouses w
-        LEFT JOIN stock_levels sl ON w.warehouse_id = sl.warehouse_id
-        GROUP BY w.warehouse_id
+        LEFT JOIN (
+            SELECT warehouse_id, COUNT(DISTINCT product_id) AS unique_products, SUM(current_stock) AS total_stock
+            FROM stock_levels
+            GROUP BY warehouse_id
+        ) sl_stats ON sl_stats.warehouse_id = w.warehouse_id
         ORDER BY utilization_percentage DESC
         """
         return db.execute_query(query, fetch=True)
@@ -120,17 +152,20 @@ class Product(BaseModel):
     def get_products_with_stock(cls):
         """Get products with current stock levels"""
         query = """
-        SELECT p.*, 
-               v.name as vendor_name,
-               GROUP_CONCAT(
-                   CONCAT(w.name, ':', sl.current_stock) 
-                   SEPARATOR ';'
-               ) as stock_by_warehouse
+        SELECT 
+            p.*,
+            v.name AS vendor_name,
+            s.stock_by_warehouse
         FROM products p
         LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
-        LEFT JOIN stock_levels sl ON p.product_id = sl.product_id
-        LEFT JOIN warehouses w ON sl.warehouse_id = w.warehouse_id
-        GROUP BY p.product_id
+        LEFT JOIN (
+            SELECT 
+                sl.product_id,
+                string_agg(w.name || ':' || sl.current_stock::text, ';') AS stock_by_warehouse
+            FROM stock_levels sl
+            JOIN warehouses w ON sl.warehouse_id = w.warehouse_id
+            GROUP BY sl.product_id
+        ) s ON s.product_id = p.product_id
         ORDER BY p.name
         """
         return db.execute_query(query, fetch=True)
@@ -155,10 +190,10 @@ class Product(BaseModel):
             query = """
             INSERT INTO stock_levels (product_id, warehouse_id, current_stock)
             VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE 
-            current_stock = current_stock + %s
+            ON CONFLICT (product_id, warehouse_id)
+            DO UPDATE SET current_stock = stock_levels.current_stock + EXCLUDED.current_stock
             """
-            params = (product_id, warehouse_id, quantity_change, quantity_change)
+            params = (product_id, warehouse_id, quantity_change)
         else:  # subtract
             query = """
             UPDATE stock_levels 
@@ -181,16 +216,20 @@ class Shipment(BaseModel):
     def get_shipments_with_details(cls):
         """Get shipments with product details"""
         query = """
-        SELECT s.*, 
-               w.name as warehouse_name,
-               v.name as vendor_name,
-               COUNT(si.item_id) as item_count,
-               COALESCE(SUM(si.total_price), 0) as total_value
+        SELECT 
+            s.*,
+            w.name AS warehouse_name,
+            v.name AS vendor_name,
+            COALESCE(si_stats.item_count, 0) AS item_count,
+            COALESCE(si_stats.total_value, 0) AS total_value
         FROM shipments s
         LEFT JOIN warehouses w ON s.warehouse_id = w.warehouse_id
         LEFT JOIN vendors v ON s.vendor_id = v.vendor_id
-        LEFT JOIN shipment_items si ON s.shipment_id = si.shipment_id
-        GROUP BY s.shipment_id
+        LEFT JOIN (
+            SELECT shipment_id, COUNT(item_id) AS item_count, COALESCE(SUM(total_price), 0) AS total_value
+            FROM shipment_items
+            GROUP BY shipment_id
+        ) si_stats ON si_stats.shipment_id = s.shipment_id
         ORDER BY s.shipment_date DESC
         """
         return db.execute_query(query, fetch=True)
@@ -239,14 +278,18 @@ class Order(BaseModel):
     def get_orders_with_details(cls):
         """Get orders with vendor and item details"""
         query = """
-        SELECT o.*, 
-               v.name as vendor_name,
-               COUNT(oi.item_id) as item_count,
-               COALESCE(SUM(oi.total_price), 0) as calculated_total
+        SELECT 
+            o.*, 
+            v.name AS vendor_name,
+            COALESCE(oi_stats.item_count, 0) AS item_count,
+            COALESCE(oi_stats.calculated_total, 0) AS calculated_total
         FROM orders o
         LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
-        LEFT JOIN order_items oi ON o.order_id = oi.order_id
-        GROUP BY o.order_id
+        LEFT JOIN (
+            SELECT order_id, COUNT(item_id) AS item_count, COALESCE(SUM(total_price), 0) AS calculated_total
+            FROM order_items
+            GROUP BY order_id
+        ) oi_stats ON oi_stats.order_id = o.order_id
         ORDER BY o.order_date DESC
         """
         return db.execute_query(query, fetch=True)

@@ -1,12 +1,15 @@
 -- Inventory Management System Database Schema
--- MySQL Database Creation Script
+-- PostgreSQL Database Creation Script
 
-CREATE DATABASE IF NOT EXISTS inventory_management;
-USE inventory_management;
+-- Create database (if not exists - handled by createdb command)
+-- CREATE DATABASE inventory_management;
+
+-- Use the database
+\c inventory_management;
 
 -- 1. Vendors (Suppliers) Table
 CREATE TABLE vendors (
-    vendor_id INT PRIMARY KEY AUTO_INCREMENT,
+    vendor_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     contact_person VARCHAR(255),
     email VARCHAR(255),
@@ -16,12 +19,12 @@ CREATE TABLE vendors (
     product_categories TEXT,
     payment_terms VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2. Warehouses Table
 CREATE TABLE warehouses (
-    warehouse_id INT PRIMARY KEY AUTO_INCREMENT,
+    warehouse_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
     address TEXT,
@@ -30,12 +33,12 @@ CREATE TABLE warehouses (
     manager_name VARCHAR(255),
     manager_contact VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. Products/Stock Table
 CREATE TABLE products (
-    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100),
     description TEXT,
@@ -47,7 +50,7 @@ CREATE TABLE products (
     is_perishable BOOLEAN DEFAULT FALSE,
     expiry_days INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id) ON DELETE SET NULL
 );
 
